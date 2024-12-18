@@ -1,0 +1,39 @@
+<div class="container">
+    <legend>Add Flower</legend>
+    <form>
+      <div class="mb-3">
+        <label for="txtName" class="form-label">Name</label>
+        <input
+          type="text"
+          name="name"
+          [(ngModel)]="taskForm.name"
+          class="form-control"
+          id="txtName"
+        />
+      </div>
+      <div class="mb-3">
+        <label for="txtPrice" class="form-label">Price</label>
+        <input
+          type="number"
+          name="price"
+          [(ngModel)]="taskForm.price"
+          class="form-control"
+          id="txtPrice"
+        />
+      </div>
+      <div class="mb-3">
+        <label for="txtQuantity" class="form-label">Quantity</label>
+        <input
+          type="number"
+          name="quantity"
+          [(ngModel)]="taskForm.quantity"
+          class="form-control"
+          id="txtQuantity"
+        />
+      </div>
+      <button type="button" (click)="create()" class="btn btn-primary">
+        Create
+      </button>
+    </form>
+  </div>
+  
