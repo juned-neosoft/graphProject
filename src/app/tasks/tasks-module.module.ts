@@ -6,13 +6,17 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HomeComponent } from './home/home/home.component';
 import { RouterModule } from '@angular/router';
 import { TaskRoutingModule } from './tasks-routing.module';
+import { TaskRealtimeComponent } from './components/task-realtime.component';
+import { TaskDemoComponent } from './components/task-demo.component';
 
 
 @NgModule({
   declarations: [
     AddTaskComponent,
     EditTaskComponent,
-    HomeComponent
+    HomeComponent,
+    TaskRealtimeComponent,
+    TaskDemoComponent
   ],
   imports: [
     CommonModule,

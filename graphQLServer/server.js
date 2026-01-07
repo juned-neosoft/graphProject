@@ -4,6 +4,10 @@ const { buildSchema } = require('graphql');
 const cors = require('cors');
 const fs = require('fs'); // create files/updations/read/write
 const path = require('path'); // tells folder path
+const { createServer } = require('http');
+const { execute, subscribe } = require('graphql');
+const { SubscriptionServer } = require('subscriptions-transport-ws');
+const { PubSub } = require('graphql-subscriptions');
 
 // Path to your JSON file
 const tasksFilePath = path.join(__dirname, 'db.json');
@@ -21,6 +25,9 @@ const generateId = (tasks) => {
   const maxId = Math.max(...tasks.map((task) => Number(task.id)));
   return String(maxId + 1); // Generate the next unique ID
 };
+
+// Create PubSub instance for subscriptions
+const pubsub = new PubSub();
 
 
 // GraphQL Schema
@@ -44,6 +51,12 @@ const schema = buildSchema(`
     createtask(name: String!, quantity: Int!, price: Int!): Task
     updatetask(id: ID!, name: String!, quantity: Int!, price: Int!): Task
     removetask(id: ID!): Task
+  }
+
+  type Subscription {
+    taskAdded: Task
+    taskUpdated: Task
+    taskDeleted: Task
   }
 `);
 
@@ -86,7 +99,11 @@ const root = {
     const tasks = readTasksFromFile();
     const newTask = { id: generateId(tasks), name, quantity, price };
     tasks.push(newTask);
-    writeTasksToFile(tasks); // Write the updated tasks to the JSON file
+    writeTasksToFile(tasks);
+    
+    // Publish subscription event
+    pubsub.publish('TASK_ADDED', { taskAdded: newTask });
+    
     return newTask;
   },
   updatetask: ({ id, name, quantity, price }) => {
@@ -94,7 +111,11 @@ const root = {
     const taskIndex = tasks.findIndex(task => task.id === id);
     if (taskIndex === -1) throw new Error("Task not found");
     tasks[taskIndex] = { id, name, quantity, price };
-    writeTasksToFile(tasks); // Write the updated tasks to the JSON file
+    writeTasksToFile(tasks);
+    
+    // Publish subscription event
+    pubsub.publish('TASK_UPDATED', { taskUpdated: tasks[taskIndex] });
+    
     return tasks[taskIndex];
   },
   removetask: ({ id }) => {
@@ -103,9 +124,18 @@ const root = {
     if (taskIndex === -1) throw new Error("Task not found");
     const removedTask = tasks[taskIndex];
     tasks.splice(taskIndex, 1);
-    writeTasksToFile(tasks); // Write the updated tasks to the JSON file
+    writeTasksToFile(tasks);
+    
+    // Publish subscription event
+    pubsub.publish('TASK_DELETED', { taskDeleted: removedTask });
+    
     return removedTask;
   },
+  
+  // Subscription resolvers
+  taskAdded: () => pubsub.asyncIterator(['TASK_ADDED']),
+  taskUpdated: () => pubsub.asyncIterator(['TASK_UPDATED']),
+  taskDeleted: () => pubsub.asyncIterator(['TASK_DELETED']),
 };
 
 app.use(
@@ -117,5 +147,24 @@ app.use(
   })
 );
 
-app.listen(3000, () => {
+// Create HTTP server
+const server = createServer(app);
+
+// Setup subscription server
+const subscriptionServer = SubscriptionServer.create(
+  {
+    schema,
+    rootValue: root,
+    execute,
+    subscribe,
+  },
+  {
+    server,
+    path: '/graphql',
+  }
+);
+
+server.listen(3000, () => {
+  console.log('GraphQL server running on http://localhost:3000/graphql');
+  console.log('Subscriptions ready at ws://localhost:3000/graphql');
 });
